@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Saudi Speed & Radio</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style> 
+        #map { height: 80vh; } 
+        #speed-info { margin-top: 10px; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="speed-info">Speed Limit: Loading...</div>
+    <script>
+        // Initialize map
+        var map = L.map('map').setView([24.7136, 46.6753], 13); // Default: Riyadh
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Marker for current location
+        var marker = L.marker([24.7136, 46.6753]).addTo(map);
+        var streetsLayer = L.layerGroup().addTo(map);
+
+        // Fetch streets and update map
+        function updateMap(lat, lon) {
+            fetch(`/api/streets?lat=${lat}&lon=${lon}&radius=0.01`)
+                .then(response => response.json())
+                .then(data => {
+                    streetsLayer.clearLayers(); // Clear old streets
+                    let nearestSpeed = "Unknown";
+                    let minDistance = Infinity;
+
+                    data.forEach(street => {
+                        // Draw street
+                        L.polyline(street.coords, {
+                            color: street.maxspeed <= 50 ? 'green' : 'red',
+                            weight: 5
+                        }).addTo(streetsLayer).bindPopup(`${street.name}: ${street.maxspeed} km/h`);
+
+                        // Find nearest speed limit
+                        street.coords.forEach(coord => {
+                            let distance = Math.sqrt(
+                                Math.pow(coord[0] - lat, 2) + Math.pow(coord[1] - lon, 2)
+                            );
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                nearestSpeed = street.maxspeed;
+                            }
+                        });
+                    });
+
+                    document.getElementById('speed-info').innerText = 
+                        `Nearest Speed Limit: ${nearestSpeed} km/h`;
+                })
+                .catch(err => console.error('Error fetching streets:', err));
+        }
+
+        // GPS handling
+        function onLocationFound(e) {
+            var lat = e.latlng.lat;
+            var lon = e.latlng.lng;
+            marker.setLatLng([lat, lon]);
+            map.panTo([lat, lon]);
+            updateMap(lat, lon);
+        }
+
+        function onLocationError(e) {
+            console.error('GPS error:', e.message);
+            updateMap(24.7136, 46.6753); // Fallback to Riyadh
+        }
+
+        // Start GPS tracking
+        map.locate({ watch: true, enableHighAccuracy: true })
+            .on('locationfound', onLocationFound)
+            .on('locationerror', onLocationError);
+
+        // Initial load
+        updateMap(24.7136, 46.6753);
+    </script>
+</body>
+</html>
