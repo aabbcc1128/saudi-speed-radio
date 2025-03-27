@@ -1,9 +1,10 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 import sqlite3
 import os
 
 app = Flask(__name__)
 DB_PATH = os.environ.get('DB_PATH', 'speedradio.db')
+SONG_PATH = 'song.mp3'  # Assumes song.mp3 is in D:\my-portfolio\
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -18,12 +19,10 @@ def init_db():
             maxspeed INTEGER
         )
     ''')
-    # Existing streets
     cursor.execute('INSERT OR IGNORE INTO streets (name, lat, lon, coords, maxspeed) VALUES (?, ?, ?, ?, ?)',
                    ('King Fahd Road', 24.7136, 46.6753, '[[24.7136, 46.6753], [24.7236, 46.6853]]', 80))
     cursor.execute('INSERT OR IGNORE INTO streets (name, lat, lon, coords, maxspeed) VALUES (?, ?, ?, ?, ?)',
                    ('King Abdullah Road', 24.6877, 46.7219, '[[24.6877, 46.7219], [24.6977, 46.7319]]', 60))
-    # New streets (Riyadh)
     cursor.execute('INSERT OR IGNORE INTO streets (name, lat, lon, coords, maxspeed) VALUES (?, ?, ?, ?, ?)',
                    ('Olaya Street', 24.6896, 46.6850, '[[24.6896, 46.6850], [24.6996, 46.6950]]', 40))
     cursor.execute('INSERT OR IGNORE INTO streets (name, lat, lon, coords, maxspeed) VALUES (?, ?, ?, ?, ?)',
@@ -56,6 +55,12 @@ def get_streets():
     result = [{'name': row[0], 'coords': eval(row[1]), 'maxspeed': row[2]} for row in streets]
     return jsonify(result)
 
+@app.route('/song')
+def stream_song():
+    if not os.path.exists(SONG_PATH):
+        return "Song not found", 404
+    return send_file(SONG_PATH, mimetype='audio/mpeg')
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)  # Debug=True for local testing

@@ -5,41 +5,43 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style> 
-        #map { height: 80vh; } 
-        #speed-info { margin-top: 10px; font-size: 18px; }
+        #map { height: 70vh; } 
+        #speed-info { margin: 10px 0; font-size: 18px; }
+        #radio { text-align: center; }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div id="speed-info">Speed Limit: Loading...</div>
+    <div id="radio">
+        <audio controls autoplay loop>
+            <source src="https://saudi-speed-api.onrender.com/song" type="audio/mpeg">
+            Your browser doesn’t support audio.
+        </audio>
+    </div>
     <script>
-        // Initialize map
-        var map = L.map('map').setView([24.7136, 46.6753], 13); // Default: Riyadh
+        var map = L.map('map').setView([24.7136, 46.6753], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Marker for current location
         var marker = L.marker([24.7136, 46.6753]).addTo(map);
         var streetsLayer = L.layerGroup().addTo(map);
 
-        // Fetch streets and update map
         function updateMap(lat, lon) {
-            fetch(`/api/streets?lat=${lat}&lon=${lon}&radius=0.01`)
+            fetch(`https://saudi-speed-api.onrender.com/api/streets?lat=${lat}&lon=${lon}&radius=0.01`)
                 .then(response => response.json())
                 .then(data => {
-                    streetsLayer.clearLayers(); // Clear old streets
+                    streetsLayer.clearLayers();
                     let nearestSpeed = "Unknown";
                     let minDistance = Infinity;
 
                     data.forEach(street => {
-                        // Draw street
                         L.polyline(street.coords, {
                             color: street.maxspeed <= 50 ? 'green' : 'red',
                             weight: 5
                         }).addTo(streetsLayer).bindPopup(`${street.name}: ${street.maxspeed} km/h`);
 
-                        // Find nearest speed limit
                         street.coords.forEach(coord => {
                             let distance = Math.sqrt(
                                 Math.pow(coord[0] - lat, 2) + Math.pow(coord[1] - lon, 2)
@@ -57,7 +59,6 @@
                 .catch(err => console.error('Error fetching streets:', err));
         }
 
-        // GPS handling
         function onLocationFound(e) {
             var lat = e.latlng.lat;
             var lon = e.latlng.lng;
@@ -68,15 +69,13 @@
 
         function onLocationError(e) {
             console.error('GPS error:', e.message);
-            updateMap(24.7136, 46.6753); // Fallback to Riyadh
+            updateMap(24.7136, 46.6753);
         }
 
-        // Start GPS tracking
         map.locate({ watch: true, enableHighAccuracy: true })
             .on('locationfound', onLocationFound)
             .on('locationerror', onLocationError);
 
-        // Initial load
         updateMap(24.7136, 46.6753);
     </script>
 </body>
