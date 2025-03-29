@@ -57,10 +57,8 @@ def get_streets():
 
 @app.route('/song')
 def stream_song():
-    if not os.path.exists(SONG_PATH):
-        return "Song not found", 404
     return send_file(SONG_PATH, mimetype='audio/mpeg')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)  # Debug=True for local testing
+    app.run(host='0.0.0.0', port=port, debug=False)
